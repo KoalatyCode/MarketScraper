@@ -30,28 +30,31 @@ public class UpdateDatabase {
     }
 
     public static JsonArray readJsonFromUrl(String url) throws IOException, JsonException {
-        int orderId;
+        long orderId;
+        int typeId;
+        int volumeRemain;
+        double price;
         InputStream is = new URL(url).openStream();
         JsonReader jreader = Json.createReader(is);
         JsonArray jsonArray = jreader.readArray();
         for (int i = 0; i < jsonArray.size(); i++) {
-            
-            //Null pointer exception
-            orderId = Integer.parseInt(jsonArray.getJsonObject(i).get("orderI_id").toString());
-            JsonValue typeId = jsonArray.getJsonObject(i).get("type_id");
-            JsonValue volumeRemain = jsonArray.getJsonObject(i).get("volume_remain");
-            JsonValue price = jsonArray.getJsonObject(i).get("price");
+            JsonObject jObject = jsonArray.getJsonObject(i);
+            orderId = jObject.getJsonNumber("order_id").longValue();
+            typeId = jObject.getJsonNumber("type_id").intValue();
+            volumeRemain = jObject.getJsonNumber("volume_remain").intValue();
+            price = jObject.getJsonNumber("price").doubleValue();
             System.out.println(
-                    "orderid: " + orderId + "\n" 
-                    + " typeid: " + typeId.toString() + "\n" 
-                    + " volumeremain: " + volumeRemain.toString() + "\n"
-                    + " price: " + price.toString() + "\n");
-            //insertMarketOrder(orderId, typeId, volumeRemain, price);
+                    "orderid: " + orderId + "\n"
+                    + " typeid: " + typeId + "\n"
+                    + " volumeremain: " + volumeRemain + "\n"
+                    + " price : " + String.format("%.0f", price) + "\n");
+
+            insertMarketOrder(orderId, typeId, volumeRemain, price);
         }
         return jsonArray;
     }
 
-    public static void insertMarketOrder(int orderID, int typeID, int volumeRemain, String price) {
+    public static void insertMarketOrder(long orderID, int typeID, int volumeRemain, double price) {
         Connection con = DatabaseConnection.connection();
         String result = "";
         if (con == null) {
@@ -63,10 +66,10 @@ public class UpdateDatabase {
             insertMarketOrder = con.prepareStatement(
                     "INSERT INTO marketorders (orderID, typeID, volumeRemain, price) "
                     + "VALUES(?, ?, ?, ?)");
-            insertMarketOrder.setInt(1, orderID);
+            insertMarketOrder.setLong(1, orderID);
             insertMarketOrder.setInt(2, typeID);
             insertMarketOrder.setInt(3, volumeRemain);
-            insertMarketOrder.setString(4, price);
+            insertMarketOrder.setDouble(4, price);
 
             int updateCount = insertMarketOrder.executeUpdate();
             result = "number of rows affected " + updateCount;

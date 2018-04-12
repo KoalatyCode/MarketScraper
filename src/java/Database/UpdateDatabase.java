@@ -1,8 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package Database;
 
 import java.io.IOException;
@@ -10,26 +5,62 @@ import java.io.InputStream;
 import java.net.URL;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 import javax.json.*;
 
-/**
- *
- * @author home
- */
 public class UpdateDatabase {
 
     public static void main(String[] args) {
         try {
-            readJsonFromUrl("https://esi.tech.ccp.is/latest/markets/"
+            List<Integer> typeIdList = getAllTypeIDs();
+            for(int typeId : typeIdList)
+            {
+            jsonFromUrl("https://esi.tech.ccp.is/latest/markets/"
                     + "10000002/orders/?datasource=tranquility&order_type=sell&"
-                    + "type_id=40691");
+                    + "type_id=" + typeId);
+            }
         } catch (Exception ex) {
             System.out.println(ex.toString());
         }
     }
 
-    public static JsonArray readJsonFromUrl(String url) throws IOException, JsonException {
+    public static List<Integer> getAllTypeIDs() {
+        Connection con = DatabaseConnection.connection();
+        String result = "";
+        if (con == null) {
+            result = "connection failure";
+        }
+        
+        List<Integer> typeIdList = new ArrayList<>();
+        PreparedStatement ps = null;
+        ResultSet rs = null;
+        String sqlStr = "SELECT * FROM modlist";
+
+        try {
+            ps = con.prepareStatement(sqlStr);
+            rs = ps.executeQuery();
+            while (rs.next()) {
+                typeIdList.add(Integer.parseInt(rs.getString("typeID")));
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                DatabaseConnection.closeDatabaseConnection(con);
+                if (ps != null) {
+                    ps.close();
+                }
+            } catch (SQLException sqle) {
+                sqle.printStackTrace();
+            }
+        }
+        return typeIdList;
+    }
+
+    public static JsonArray jsonFromUrl(String url) throws IOException, JsonException {
         long orderId;
         int typeId;
         int volumeRemain;

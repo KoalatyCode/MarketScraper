@@ -5,6 +5,7 @@ import static Database.UpdateDatabase.getAllTypeIDs;
 import javax.inject.Named;
 import javax.enterprise.context.SessionScoped;
 import java.io.Serializable;
+import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -29,13 +30,13 @@ public class BBean implements Serializable {
 
     private String outputTable;
     private double buyoutPrice;
-    private int buyoutQTY;
+    private double buyoutQTY;
 
-    public int getBuyOutQTY() {
+    public double getBuyOutQTY() {
         return buyoutQTY;
     }
 
-    public void setBuyOutQTY(int buyOutQTY) {
+    public void setBuyOutQTY(double buyOutQTY) {
         this.buyoutQTY = buyOutQTY;
     }
 
@@ -85,7 +86,7 @@ public class BBean implements Serializable {
         List<MarketOrders> marketOrders = new ArrayList<>();
         List<Integer> typeIDList = getAllTypeIDs();
         clearTable();
-        
+
         Connection con = DatabaseConnection.connection();
         String result = "";
 
@@ -96,34 +97,26 @@ public class BBean implements Serializable {
 
         PreparedStatement selectMarketOrder = null;
         try {
-            for (int i = 0; i < typeIDList.size(); i++) {
-                selectMarketOrder = con.prepareStatement(
-                        "SELECT items.typeName, "
-                                + "SUM(marketorder.isk * marketorder.qty) AS TotalISK, "
-                                + "SUM(marketorder.qty) AS TotalQTY, "
-                                + "marketorder.timeFetched "
-                        + "FROM items "
-                        + "JOIN marketorder ON marketorder.typeID = items.typeID "
-                        + "WHERE items.typeID = ? AND "
-                                + "TotalISK <= ? AND "
-                                + "TotalQTY <= ? AND "
-                                + "marketorder.locationID = 60003760 AND "
-                                + "marketorder.isBuyOrder = FALSE"
-                        + "GROUP BY items.typeName, marketorder.timeFetched");
-                //sql doesnt work
-                selectMarketOrder.setInt(1, typeIDList.get(i));
-                selectMarketOrder.setDouble(2, buyoutPrice);
-                selectMarketOrder.setInt(3, buyoutQTY);
+            selectMarketOrder = con.prepareStatement(
+                    "SELECT marketorder.typeID, "
+                    + "items.typeName, "
+                    + "ROUND(SUM(marketorder.isk * marketorder.qty), 2) AS TotalISK, "
+                    + "SUM(marketorder.qty) AS TotalQTY "
+                    + "FROM items "
+                    + "JOIN marketorder ON marketorder.typeID = items.typeID "
+                    + "WHERE marketorder.locationID = 60003760 AND "
+                    + "marketorder.isBuyOrder = FALSE "
+                    + "GROUP BY marketorder.typeID, items.typeName");
 
-                ResultSet rs = selectMarketOrder.executeQuery();
+            ResultSet rs = selectMarketOrder.executeQuery();
 
-                while (rs.next()) {
-                    marketOrders.add(new MarketOrders(
-                            rs.getString("typeName"),
-                            rs.getTimestamp("timeFetched"),
-                            rs.getInt("TotalQTY"),
-                            rs.getDouble("TotalISK")));
-                }
+            while (rs.next()) {
+                marketOrders.add(new MarketOrders(
+                        rs.getInt("typeID"),
+                        rs.getString("typeName"),
+                        //rs.getTimestamp("timeFetched"),
+                        rs.getDouble("TotalQTY"),
+                        rs.getDouble("TotalISK")));
             }
 
             buildOutputTable(marketOrders);
@@ -152,49 +145,68 @@ public class BBean implements Serializable {
         String currentTimestamp = new Timestamp(System.currentTimeMillis()).toString();
 
         for (int i = 1; i < marketOrders.size(); i++) {
-            try {
-                NumberFormat nf = NumberFormat.getNumberInstance();
-                Date d1 = format.parse(currentTimestamp);
-                Date d2 = format.parse(marketOrders.get(i).timeFetched.toString());
-                long diff = d2.getTime() - d1.getTime();
-                long diffMinutes = diff / (60 * 1000) % 60;
+            if (marketOrders.get(i).totalISK <= buyoutPrice
+                && marketOrders.get(i).totalQTY <= buyoutQTY) {
+                try {
+                    NumberFormat nf = NumberFormat.getNumberInstance();
+                    //Date d1 = format.parse(currentTimestamp);
+                    //Date d2 = format.parse(marketOrders.get(i).timeFetched.toString());
+                    //long diff = d2.getTime() - d1.getTime();
+                    //long diffMinutes = diff / (60 * 1000) % 60;
 
-                outputTable
-                        += "<tr>"
-                        + "<td>"
-                        + marketOrders.get(i).typeName
-                        + "</td>"
-                        + "<td>"
-                        + nf.format(marketOrders.get(i).totalISK)
-                        + "</td>"
-                        + "<td>"
-                        + nf.format(marketOrders.get(i).totalQTY)
-                        + "</td>"
-                        + "<td>"
-                        + diffMinutes + "minutes ago"
-                        + "</td>"
-                        + "</tr>";
-            } catch (Exception e) {
-                System.out.println(e.getMessage());
+                    outputTable
+                            += "<tr>"
+                            + "<td>"
+                            + "<img src=\"https://image.eveonline.com/Type/" + marketOrders.get(i).typeID + "_32.png\" width=\"32\" height=\"32\"/>"
+                            + "</td>"
+                            + "<td>"
+                            + marketOrders.get(i).typeName
+                            + "</td>"
+                            + "<td>"
+                            + nf.format(marketOrders.get(i).totalISK)
+                            + "</td>"
+                            + "<td>"
+                            + nf.format(marketOrders.get(i).totalQTY)
+                            + "</td>"
+                            + "<td>"
+                            + marketOrders.get(i).locationID
+                            + "</td>"
+                            //+ "<td>"
+                            //+ diffMinutes + "minutes ago"
+                            //+ "</td>"
+                            + "</tr>";
+                } catch (Exception e) {
+                    System.out.println(e.getMessage());
+                }
             }
         }
     }
 
     public class MarketOrders {
 
+        int typeID;
         String typeName;
         Timestamp timeFetched;
         int locationID = 60003760;
-        int totalQTY;
+        double totalQTY;
         double totalISK;
 
-        public MarketOrders(String typeName, Timestamp timeFetched, int totalQTY, double totalISK) {
+        public MarketOrders(int typeID, String typeName, /*Timestamp timeFetched,*/ double totalQTY, double totalISK) {
+            this.typeID = typeID;
             this.typeName = typeName;
-            this.timeFetched = timeFetched;
+            /*this.timeFetched = timeFetched;*/
             this.totalQTY = totalQTY;
             this.totalISK = totalISK;
         }
-        
+
+        public int getTypeID() {
+            return typeID;
+        }
+
+        public void setTypeID(int typeID) {
+            this.typeID = typeID;
+        }
+
         public double getTotalISK() {
             return totalISK;
         }
@@ -203,11 +215,11 @@ public class BBean implements Serializable {
             this.totalISK = totalISK;
         }
 
-        public int getTotalQTY() {
+        public double getTotalQTY() {
             return totalQTY;
         }
 
-        public void setTotalQTY(int totalQTY) {
+        public void setTotalQTY(double totalQTY) {
             this.totalQTY = totalQTY;
         }
 

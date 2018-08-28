@@ -1,7 +1,5 @@
 package Database;
 
-
-
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -10,7 +8,7 @@ public class DatabaseConnection {
 
     public static Connection connection() {
         Connection con = null;
-        String databaseName = "officerMods";
+        String databaseName = "marketdatabase";
         String userName = "root";
         String password = "";
         con = null;

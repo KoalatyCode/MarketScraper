@@ -10,31 +10,28 @@
 
     <h:body>
         <center>
-            <div style="float: left">
-                <h:form>
-                    <h:commandButton value="Find Good Deals" action="findGoodDeals.xhtml"/>
-                </h:form>
-            </div>
             <div style="width: 75%;">
                 <h:form>
                     <h:outputText>Search:</h:outputText>
-                    <h:inputText id="typeID" value="#{pBean.inputTypeID}"/>
-                    <h:commandButton value="Search" action="#{pBean.getOrdersByTypeID}"/>
+                    <h:inputText id="totalISK" value="#{bBean.buyOutPrice}"/>
+                    <h:inputText id="totalQTY" value="#{bBean.buyOutQTY}"/>
+                    <h:commandButton value="Find Good Deals" action="#{bBean.getOrders}"/>
                     <br/>
                     <table id="itemTable" class="display" style="width: 100%;">
                         <thead>
                             <tr>
                                 <th>Item</th>
-                                <th>ISK</th>
-                                <th>QTY</th>
+                                <th>Total ISK</th>
+                                <th>Total QTY</th>
+                                <th>Location</th>
                                 <th>Time Fetched</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <h:outputText value="#{pBean.outputTable}" escape="false"/>
+                            <h:outputText value="#{bBean.outputTable}" escape="false"/>
                         </tbody>
                     </table>
-                    <h:commandButton value="Clear" action="#{pBean.clearTable}"/>
+                    <h:commandButton value="Clear" action="#{bBean.clearTable}"/>
                 </h:form>
             </div>
         </center>

@@ -110,6 +110,7 @@ public class BBean implements Serializable {
                                 + "marketorder.locationID = 60003760 AND "
                                 + "marketorder.isBuyOrder = FALSE"
                         + "GROUP BY items.typeName, marketorder.timeFetched");
+                //sql doesnt work
                 selectMarketOrder.setInt(1, typeIDList.get(i));
                 selectMarketOrder.setDouble(2, buyoutPrice);
                 selectMarketOrder.setInt(3, buyoutQTY);

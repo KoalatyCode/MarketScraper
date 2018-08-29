@@ -27,7 +27,9 @@ public class UpdateDatabase {
             page_number++;
             InputStream is = new URL(url + page_number).openStream();
 
-            if (is.available() > 0) {
+            System.out.println(is.available());
+
+            if (is.available() > 2) {
                 JsonReader jreader = Json.createReader(is);
                 JsonArray jsonArray = jreader.readArray();
 
@@ -71,33 +73,43 @@ public class UpdateDatabase {
             result = "connection failure";
             return;
         }
+        
+        try {
+            StringBuilder sqlSB = new StringBuilder();
+            sqlSB.append("INSERT INTO marketorders (duration, is_buy_order, issued, location_id, min_volume, order_id, price, `range`, system_id, type_id, volume_remain, volume_total, time_fetched) VALUES");
 
-        for (int i = 0; i < marketOrderList.size(); i++) {
-            PreparedStatement ps = null;
-            try {
-                ps = con.prepareStatement(
-                        "INSERT INTO marketorders "
-                        + "(duration, is_buy_order, issued, location_id, min_volume, order_id, price, `range`, system_id, type_id, volume_remain, volume_total, time_fetched) "
-                        + "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-                ps.setInt(1, marketOrderList.get(i).getDuration());
-                ps.setBoolean(2, marketOrderList.get(i).isIs_buy_order());
-                ps.setString(3, marketOrderList.get(i).getIssued());
-                ps.setInt(4, marketOrderList.get(i).getLocation_id());
-                ps.setInt(5, marketOrderList.get(i).getMin_volume());
-                ps.setInt(6, marketOrderList.get(i).getOrder_id());
-                ps.setDouble(7, marketOrderList.get(i).getPrice());
-                ps.setString(8, marketOrderList.get(i).getRange());
-                ps.setInt(9, marketOrderList.get(i).getSystem_id());
-                ps.setInt(10, marketOrderList.get(i).getType_id());
-                ps.setInt(11, marketOrderList.get(i).getVolume_remain());
-                ps.setInt(12, marketOrderList.get(i).getVolume_total());
-                ps.setTimestamp(13, marketOrderList.get(i).getTimeStamp());
-
-                ps.executeUpdate();
-
-            } catch (SQLException ex) {
-                System.err.println(ex);
+            for(int i = 0; i < marketOrderList.size(); i++)
+            {
+                sqlSB.append(" (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?),");
             }
+            
+            sqlSB.setLength(sqlSB.length() - 1);
+            
+            PreparedStatement ps = null;
+            ps = con.prepareStatement(sqlSB.toString());
+            
+            int valueCounter = 1;
+
+            for (int i = 0; i < marketOrderList.size(); i++) {
+                
+                ps.setInt(valueCounter++, marketOrderList.get(i).getDuration());
+                ps.setBoolean(valueCounter++, marketOrderList.get(i).isIs_buy_order());
+                ps.setString(valueCounter++, marketOrderList.get(i).getIssued());
+                ps.setInt(valueCounter++, marketOrderList.get(i).getLocation_id());
+                ps.setInt(valueCounter++, marketOrderList.get(i).getMin_volume());
+                ps.setInt(valueCounter++, marketOrderList.get(i).getOrder_id());
+                ps.setDouble(valueCounter++, marketOrderList.get(i).getPrice());
+                ps.setString(valueCounter++, marketOrderList.get(i).getRange());
+                ps.setInt(valueCounter++, marketOrderList.get(i).getSystem_id());
+                ps.setInt(valueCounter++, marketOrderList.get(i).getType_id());
+                ps.setInt(valueCounter++, marketOrderList.get(i).getVolume_remain());
+                ps.setInt(valueCounter++, marketOrderList.get(i).getVolume_total());
+                ps.setTimestamp(valueCounter++, marketOrderList.get(i).getTimeStamp());
+            }
+            
+            ps.executeUpdate();
+        } catch (SQLException ex) {
+            System.err.println(ex);
         }
     }
 

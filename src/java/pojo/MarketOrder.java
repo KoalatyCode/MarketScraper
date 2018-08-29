@@ -3,18 +3,18 @@ package pojo;
 import java.sql.Timestamp;
 
 public class MarketOrder {
-    int duration;
-    boolean is_buy_order;
-    String issued;
-    int location_id;
-    int min_volume;
-    int order_id;
-    double price;
-    String range;
-    int system_id;
-    int type_id;
-    int volume_remain;
-    int volume_total;
+    int duration = 0;
+    boolean is_buy_order = false;
+    String issued = "default";
+    int location_id = 0;
+    int min_volume = 0;
+    int order_id = 0;
+    double price = 0.0;
+    String range = "default";
+    int system_id = 0;
+    int type_id = 0;
+    int volume_remain = 0;
+    int volume_total = 0;
     Timestamp timeStamp;
 
     public int getDuration() {
@@ -138,6 +138,4 @@ public class MarketOrder {
 
     public MarketOrder() {
     }
-    
-    
 }

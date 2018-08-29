@@ -6,7 +6,6 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.sql.Timestamp;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
@@ -17,10 +16,14 @@ import javax.json.*;
 
 public class GetDataThreaded {
 
-    public static List<MarketOrder> marketOrderList = new ArrayList<>();
+    public List<MarketOrder> marketOrderList = new ArrayList<>();
 
-    public static void main(String[] args) {
-        int pages = 0;
+    public List<MarketOrder> getMarketOrderList() {
+        return marketOrderList;
+    }
+
+    public void runGetData() {
+        int pages = 250;
         Map<String, List<String>> responseHeaders = getResponseHeaders();
         
         for (Map.Entry<String, List<String>> entry : responseHeaders.entrySet()) {
@@ -41,6 +44,8 @@ public class GetDataThreaded {
         executor.shutdown();
         while (!executor.isTerminated()) {
         }
+        
+        System.out.println(marketOrderList.size());
     }
 
     public static Map<String, List<String>> getResponseHeaders() {
@@ -56,7 +61,7 @@ public class GetDataThreaded {
         }
     }
 
-    private static class GetDataFromPage implements Runnable {
+    private class GetDataFromPage implements Runnable {
 
         private int page;
 
@@ -80,7 +85,7 @@ public class GetDataThreaded {
 
     }
 
-    private static class GetData {
+    private class GetData {
         int page;
 
         public int getPage() {

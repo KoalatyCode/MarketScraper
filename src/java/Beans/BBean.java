@@ -1,11 +1,9 @@
 package Beans;
 
 import Database.DatabaseConnection;
-import static Database.UpdateDatabase.getAllTypeIDs;
 import javax.inject.Named;
 import javax.enterprise.context.SessionScoped;
 import java.io.Serializable;
-import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -14,7 +12,6 @@ import java.sql.Timestamp;
 import java.text.NumberFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 
 @Named(value = "bBean")
@@ -98,15 +95,15 @@ public class BBean implements Serializable {
         PreparedStatement selectMarketOrder = null;
         try {
             selectMarketOrder = con.prepareStatement(
-                    "SELECT marketorder.typeID, "
+                    "SELECT marketorders.typeID, "
                     + "items.typeName, "
-                    + "ROUND(SUM(marketorder.isk * marketorder.qty), 2) AS TotalISK, "
+                    + "ROUND(SUM(marketorders.isk * marketorders.qty), 2) AS TotalISK, "
                     + "SUM(marketorder.qty) AS TotalQTY "
                     + "FROM items "
-                    + "JOIN marketorder ON marketorder.typeID = items.typeID "
-                    + "WHERE marketorder.locationID = 60003760 AND "
+                    + "JOIN marketorders ON marketorders.typeID = items.typeID "
+                    + "WHERE marketorders.locationID = 60003760 AND "
                     + "marketorder.isBuyOrder = FALSE "
-                    + "GROUP BY marketorder.typeID, items.typeName");
+                    + "GROUP BY marketorders.typeID, items.typeName");
 
             ResultSet rs = selectMarketOrder.executeQuery();
 

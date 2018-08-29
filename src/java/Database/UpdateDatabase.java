@@ -5,147 +5,133 @@ import java.io.InputStream;
 import java.net.URL;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import javax.json.*;
+import pojo.MarketOrder;
 
 public class UpdateDatabase {
 
-    public static Connection con = DatabaseConnection.connection();
+    public static String result;
 
-    public static List<Integer> getAllTypeIDs() {
+    public static void jsonFromUrl() throws IOException, JsonException {
+        boolean hasData = true;
+        int page_number = 0;
 
-        String result = "";
-        if (con == null) {
-            result = "connection failure";
-        }
+        String url = "https://esi.tech.ccp.is/latest/markets/10000002/orders/?datasource=tranquility&page=";
+        List<MarketOrder> marketOrderList = new ArrayList<>();
 
-        List<Integer> typeIdList = new ArrayList<>();
-        PreparedStatement ps = null;
-        ResultSet rs = null;
-        String sqlStr = "SELECT typeID FROM items";
+        while (hasData) {
+            page_number++;
+            InputStream is = new URL(url + page_number).openStream();
 
-        try {
-            ps = con.prepareStatement(sqlStr);
-            rs = ps.executeQuery();
-            while (rs.next()) {
-                typeIdList.add(Integer.parseInt(rs.getString("typeID")));
+            if (is.available() > 0) {
+                JsonReader jreader = Json.createReader(is);
+                JsonArray jsonArray = jreader.readArray();
+
+                try {
+                    for (int i = 0; i < jsonArray.size(); i++) {
+                        MarketOrder marketOrder = new MarketOrder();
+                        JsonObject jObject = jsonArray.getJsonObject(i);
+
+                        marketOrder.setDuration(jObject.getInt("duration"));
+                        marketOrder.setIs_buy_order(jObject.getBoolean("is_buy_order"));
+                        marketOrder.setIssued(jObject.getString("issued"));
+                        marketOrder.setLocation_id(jObject.getInt("location_id"));
+                        marketOrder.setMin_volume(jObject.getInt("min_volume"));
+                        marketOrder.setOrder_id(jObject.getInt("order_id"));
+                        marketOrder.setPrice(jObject.getJsonNumber("price").doubleValue());
+                        marketOrder.setRange(jObject.getString("range"));
+                        marketOrder.setSystem_id(jObject.getInt("system_id"));
+                        marketOrder.setType_id(jObject.getInt("type_id"));
+                        marketOrder.setVolume_remain(jObject.getInt("volume_remain"));
+                        marketOrder.setVolume_total(jObject.getInt("volume_total"));
+                        marketOrder.setTimeStamp(new Timestamp(System.currentTimeMillis()));
+
+                        marketOrderList.add(marketOrder);
+
+                        System.out.println("Market Order Type ID: " + marketOrder.getType_id() + "\n Page Number: " + page_number);
+
+                    }
+                } catch (Exception ex) {
+                    System.out.println(ex.getMessage());
+                }
+            } else {
+                break;
             }
-        } catch (Exception e) {
-            e.printStackTrace();
-        } 
-        return typeIdList;
+        }
+        insertMarketOrders(marketOrderList);
     }
 
-    public static class JSONData implements Runnable {
-
-        String currentURL = "https://esi.tech.ccp.is/latest/markets/10000002/orders/?datasource=tranquility&order_type=sell&type_id=";
-        int currentTypeID;
-
-        public JSONData(int currentTypeID) {
-            this.currentTypeID = currentTypeID;
+    public static void insertMarketOrders(List<MarketOrder> marketOrderList) {
+        Connection con = DatabaseConnection.connection();
+        if (con == null) {
+            result = "connection failure";
+            return;
         }
 
-        @Override
-        public void run() {
+        for (int i = 0; i < marketOrderList.size(); i++) {
+            PreparedStatement ps = null;
             try {
-                jsonFromUrl(currentURL + currentTypeID);
-            } catch (Exception e) {
-                System.out.println(e.getMessage());
-            }
-        }
+                ps = con.prepareStatement(
+                        "INSERT INTO marketorders "
+                        + "(duration, is_buy_order, issued, location_id, min_volume, order_id, price, `range`, system_id, type_id, volume_remain, volume_total, time_fetched) "
+                        + "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                ps.setInt(1, marketOrderList.get(i).getDuration());
+                ps.setBoolean(2, marketOrderList.get(i).isIs_buy_order());
+                ps.setString(3, marketOrderList.get(i).getIssued());
+                ps.setInt(4, marketOrderList.get(i).getLocation_id());
+                ps.setInt(5, marketOrderList.get(i).getMin_volume());
+                ps.setInt(6, marketOrderList.get(i).getOrder_id());
+                ps.setDouble(7, marketOrderList.get(i).getPrice());
+                ps.setString(8, marketOrderList.get(i).getRange());
+                ps.setInt(9, marketOrderList.get(i).getSystem_id());
+                ps.setInt(10, marketOrderList.get(i).getType_id());
+                ps.setInt(11, marketOrderList.get(i).getVolume_remain());
+                ps.setInt(12, marketOrderList.get(i).getVolume_total());
+                ps.setTimestamp(13, marketOrderList.get(i).getTimeStamp());
 
-        public void jsonFromUrl(String url) throws IOException, JsonException {
-            String isBuyOrder;
-            int locationID;
-            long orderID;
-            double isk;
-            int systemID;
-            int typeID;
-            int qty;
-            Timestamp currentTimestamp = new Timestamp(System.currentTimeMillis());
+                ps.executeUpdate();
 
-            InputStream is = new URL(url).openStream();
-
-            JsonReader jreader = Json.createReader(is);
-            JsonArray jsonArray = jreader.readArray();
-            try {
-                for (int i = 0; i < jsonArray.size(); i++) {
-                    JsonObject jObject = jsonArray.getJsonObject(i);
-                    isBuyOrder = jObject.get("is_buy_order").toString();
-                    locationID = jObject.getJsonNumber("location_id").intValue();
-                    orderID = jObject.getJsonNumber("order_id").longValue();
-                    isk = jObject.getJsonNumber("price").doubleValue();
-                    systemID = jObject.getJsonNumber("system_id").intValue();
-                    typeID = jObject.getJsonNumber("type_id").intValue();
-                    qty = jObject.getJsonNumber("volume_remain").intValue();
-
-                    System.out.println(
-                            "typeID: " + typeID + "\n"
-                            + " qty: " + qty + "\n"
-                            + " price : " + String.format("%.0f", isk) + "\n");
-
-                    insertMarketOrder(isBuyOrder, locationID, orderID, isk, systemID, typeID, qty, currentTimestamp);
-                }
-            } catch (Exception ex) {
-                System.out.println(ex.getMessage());
-            }
-        }
-
-        public void insertMarketOrder(String isBuyOrder, int locationID, long orderID, double isk, int systemID, int typeID, int qty, Timestamp currentTimestamp) {
-            String result = "";
-            if (con == null) {
-                result = "connection failure";
-                return;
-            }
-            PreparedStatement insertMarketOrder = null;
-            try {
-                insertMarketOrder = con.prepareStatement(
-                        "INSERT INTO marketorder (isBuyOrder, locationID, orderID, isk, systemID, typeID, qty, timeFetched) "
-                        + "VALUES(?, ?, ?, ?, ?, ?, ?, ?)");
-                insertMarketOrder.setString(1, isBuyOrder);
-                insertMarketOrder.setInt(2, locationID);
-                insertMarketOrder.setLong(3, orderID);
-                insertMarketOrder.setDouble(4, isk);
-                insertMarketOrder.setInt(5, systemID);
-                insertMarketOrder.setInt(6, typeID);
-                insertMarketOrder.setInt(7, qty);
-                insertMarketOrder.setTimestamp(8, currentTimestamp);
-
-                int updateCount = insertMarketOrder.executeUpdate();
-                result = "number of rows affected " + updateCount;
-            } catch (Exception ex) {
+            } catch (SQLException ex) {
                 System.err.println(ex);
-                ex.printStackTrace();
             }
         }
     }
 
     public static void truncateTheDatabase() {
+        Connection con = DatabaseConnection.connection();
+        if (con == null) {
+            result = "connection failure";
+            return;
+        }
+
+        PreparedStatement ps = null;
+        String sql = "TRUNCATE TABLE marketorders";
+
         try {
-            PreparedStatement ps = con.prepareStatement("TRUNCATE TABLE marketorder");
+            ps = con.prepareStatement(sql);
             ps.execute();
-        } catch (Exception e) {
+        } catch (SQLException e) {
             System.out.println(e.getMessage());
+        } finally {
+            try {
+                DatabaseConnection.closeDatabaseConnection(con);
+                if (ps != null) {
+                    ps.close();
+                }
+            } catch (SQLException sqle) {
+                sqle.printStackTrace();
+            }
         }
     }
-
-    static List<Integer> typeIDList = getAllTypeIDs();
 
     public static void main(String[] args) {
         try {
             truncateTheDatabase();
-            ExecutorService executor = Executors.newFixedThreadPool(50);
-
-            for (int typeID : typeIDList) {
-                executor.execute(new JSONData(typeID));
-            }
-            executor.shutdown();
+            jsonFromUrl();
         } catch (Exception ex) {
             System.out.println(ex.toString());
         }

@@ -62,9 +62,9 @@ public class PBean implements Serializable {
         PreparedStatement selectMarketOrder = null;
         try {
             selectMarketOrder = con.prepareStatement(
-                    "SELECT items.typeName, marketorder.locationID, marketorder.isk, marketorder.qty, marketorder.timeFetched, marketorder.isBuyOrder "
+                    "SELECT items.typeName, marketorders.locationID, marketorders.isk, marketorders.qty, marketorders.timeFetched, marketorders.isBuyOrder "
                     + "FROM items "
-                    + "JOIN marketorder ON marketorder.typeID = items.typeID "
+                    + "JOIN marketorders ON marketorders.typeID = items.typeID "
                     + "WHERE items.typeID = ?");
             selectMarketOrder.setInt(1, this.inputTypeID);
 

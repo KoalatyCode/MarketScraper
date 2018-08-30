@@ -10,13 +10,12 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.text.NumberFormat;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-import javax.faces.component.UIComponent;
-import javax.faces.component.UIInput;
-import javax.faces.event.ComponentSystemEvent;
+import pojo.MarketOrder;
 
 @Named(value = "pBean")
 @SessionScoped
@@ -25,19 +24,13 @@ public class PBean implements Serializable {
     public PBean() {
     }
 
-    public void clearTable() {
-        outputTable = "";
-    }
-
     private int inputTypeID;
+    private String inputTypeName;
     private String outputTable;
+    public static String result = "";
 
     public String getOutputTable() {
         return outputTable;
-    }
-
-    public void setOutputTable(String outputTable) {
-        this.outputTable = outputTable;
     }
 
     public int getInputTypeID() {
@@ -48,59 +41,124 @@ public class PBean implements Serializable {
         this.inputTypeID = inputTypeID;
     }
 
-    public void getOrdersByTypeID() {
+    public void setOutputTable(String outputTable) {
+        this.outputTable = outputTable;
+    }
 
-        List<MarketOrders> marketOrders = new ArrayList<>();
+    public String getInputTypeName() {
+        return inputTypeName;
+    }
+
+    public void setInputTypeName(String inputTypeName) {
+        this.inputTypeName = inputTypeName;
+    }
+
+    public void clearTable() {
+        outputTable = "";
+    }
+
+    public void getWildCards() throws SQLException {
         Connection con = DatabaseConnection.connection();
-        String result = "";
+
+        if (con == null) {
+            result = "connection failure";
+            return;
+        }
+        
+        PreparedStatement ps = null;
+
+        try {
+
+        } finally {
+            DatabaseConnection.closeDatabaseConnection(con);
+            if (ps != null) {
+                ps.close();
+            }
+        }
+
+    }
+
+    public void getOrdersByTypeName(String typeName) throws SQLException {
+        Connection con = DatabaseConnection.connection();
 
         if (con == null) {
             result = "connection failure";
             return;
         }
 
-        PreparedStatement selectMarketOrder = null;
-        try {
-            selectMarketOrder = con.prepareStatement(
-                    "SELECT items.typeName, marketorders.locationID, marketorders.isk, marketorders.qty, marketorders.timeFetched, marketorders.isBuyOrder "
-                    + "FROM items "
-                    + "JOIN marketorders ON marketorders.typeID = items.typeID "
-                    + "WHERE items.typeID = ?");
-            selectMarketOrder.setInt(1, this.inputTypeID);
+        List<MarketOrder> marketOrders = new ArrayList<>();
+        PreparedStatement ps = null;
 
-            ResultSet rs = selectMarketOrder.executeQuery();
+        try {
+            ps = con.prepareStatement(
+                    "SELECT items.type_id, items.type_name, marketorders.price, marketOrders.time_fetched"
+                    + "FROM items "
+                    + "JOIN marketorders ON marketorders.type_id = items.type_id "
+                    + "WHERE items.type_name LIKE ? AND "
+                    + "marketorders.is_buy_order = 1");
+            ps.setString(1, typeName);
+
+            ResultSet rs = ps.executeQuery();
 
             while (rs.next()) {
-                marketOrders.add(new MarketOrders(
-                        rs.getString("typeName"),
-                        rs.getInt("locationID"),
-                        rs.getDouble("isk"),
-                        rs.getInt("qty"),
-                        rs.getTimestamp("timeFetched"),
-                        rs.getBoolean("isBuyOrder")));
+                marketOrders.add(new MarketOrder(
+                        rs.getString("type_name"),
+                        rs.getDouble("price"),
+                        rs.getInt("volume_remain"),
+                        rs.getTimestamp("time_fetched")));
             }
 
             buildOutputTable(marketOrders);
 
-        } catch (Exception ex) {
-            System.err.println(ex);
-            ex.printStackTrace();
+        } finally {
+            DatabaseConnection.closeDatabaseConnection(con);
+            if (ps != null) {
+                ps.close();
+            }
+        }
+    }
+    
+    public void getOrdersByTypeID() throws SQLException {
+        Connection con = DatabaseConnection.connection();
+
+        if (con == null) {
+            result = "connection failure";
+            return;
+        }
+
+        List<MarketOrder> marketOrders = new ArrayList<>();
+        PreparedStatement ps = null;
+
+        try {
+            ps = con.prepareStatement(
+                    "SELECT items.type_id, items.type_name, marketorders.price, marketorders.volume_remain, marketOrders.time_fetched "
+                    + "FROM items "
+                    + "JOIN marketorders ON marketorders.type_id = items.type_id "
+                    + "WHERE marketorders.type_id = ? AND "
+                    + "marketorders.is_buy_order = 0");
+            ps.setInt(1, inputTypeID);
+
+            ResultSet rs = ps.executeQuery();
+
+            while (rs.next()) {
+                marketOrders.add(new MarketOrder(
+                        rs.getString("type_name"),
+                        rs.getDouble("price"),
+                        rs.getInt("volume_remain"),
+                        rs.getTimestamp("time_fetched")));
+            }
+
+            buildOutputTable(marketOrders);
 
         } finally {
-            try {
-                DatabaseConnection.closeDatabaseConnection(con);
-                if (selectMarketOrder != null) {
-                    selectMarketOrder.close();
-                }
-
-            } catch (SQLException sqle) {
-                System.err.println(sqle);
-                sqle.printStackTrace();
+            DatabaseConnection.closeDatabaseConnection(con);
+            if (ps != null) {
+                ps.close();
             }
         }
     }
 
-    public void buildOutputTable(List<MarketOrders> marketOrders) {
+    public void buildOutputTable(List<MarketOrder> marketOrders) {
         outputTable = "";
         SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
         String currentTimestamp = new Timestamp(System.currentTimeMillis()).toString();
@@ -109,95 +167,31 @@ public class PBean implements Serializable {
             try {
                 NumberFormat nf = NumberFormat.getNumberInstance();
                 Date d1 = format.parse(currentTimestamp);
-                Date d2 = format.parse(marketOrders.get(i).timeFetched.toString());
+                Date d2 = format.parse(marketOrders.get(i).getTimestamp().toString());
                 long diff = d2.getTime() - d1.getTime();
                 long diffMinutes = diff / (60 * 1000) % 60;
 
                 outputTable
                         += "<tr>"
                         + "<td>"
-                        + marketOrders.get(i).typeName
+                        + "<img src=\"https://image.eveonline.com/Type/" + this.inputTypeID + "_32.png\" width=\"32\" height=\"32\"/>"
                         + "</td>"
                         + "<td>"
-                        + nf.format(marketOrders.get(i).isk)
+                        + marketOrders.get(i).getType_name()
                         + "</td>"
                         + "<td>"
-                        + nf.format(marketOrders.get(i).qty)
+                        + nf.format(marketOrders.get(i).getPrice())
+                        + "</td>"
+                        + "<td>"
+                        + nf.format(marketOrders.get(i).getVolume_remain())
                         + "</td>"
                         + "<td>"
                         + diffMinutes + "minutes ago"
                         + "</td>"
                         + "</tr>";
-            } catch (Exception e) {
+            } catch (ParseException e) {
                 System.out.println(e.getMessage());
             }
-        }
-    }
-
-    public class MarketOrders {
-
-        String typeName;
-        Timestamp timeFetched;
-        int locationID;
-        double isk;
-        int qty;
-        boolean isBuyOrder;
-
-        public MarketOrders(String typeName, int locationID, double isk, int qty, Timestamp timeFetched, boolean isBuyOrder) {
-            this.typeName = typeName;
-            this.timeFetched = timeFetched;
-            this.locationID = locationID;
-            this.isk = isk;
-            this.qty = qty;
-            this.isBuyOrder = isBuyOrder;
-        }
-
-        public boolean isIsBuyOrder() {
-            return isBuyOrder;
-        }
-
-        public void setIsBuyOrder(boolean isBuyOrder) {
-            this.isBuyOrder = isBuyOrder;
-        }
-
-        public int getQty() {
-            return qty;
-        }
-
-        public void setQty(int qty) {
-            this.qty = qty;
-        }
-
-        public double getIsk() {
-            return isk;
-        }
-
-        public void setIsk(double isk) {
-            this.isk = isk;
-        }
-
-        public int getLocationID() {
-            return locationID;
-        }
-
-        public void setLocationID(int locationID) {
-            this.locationID = locationID;
-        }
-
-        public Timestamp getTimeFetched() {
-            return timeFetched;
-        }
-
-        public void setTimeFetched(Timestamp timeFetched) {
-            this.timeFetched = timeFetched;
-        }
-
-        public String getTypeName() {
-            return typeName;
-        }
-
-        public void setTypeName(String typeName) {
-            this.typeName = typeName;
         }
     }
 }

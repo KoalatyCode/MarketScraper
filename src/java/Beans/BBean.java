@@ -13,6 +13,7 @@ import java.text.NumberFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
+import pojo.MarketOrder;
 
 @Named(value = "bBean")
 @SessionScoped
@@ -21,13 +22,10 @@ public class BBean implements Serializable {
     public BBean() {
     }
 
-    public void clearTable() {
-        outputTable = "";
-    }
-
     private String outputTable;
     private double buyoutPrice;
     private double buyoutQTY;
+    static String result = "";
 
     public double getBuyOutQTY() {
         return buyoutQTY;
@@ -53,39 +51,15 @@ public class BBean implements Serializable {
         this.outputTable = outputTable;
     }
 
-    public static Connection con = DatabaseConnection.connection();
-
-    public static List<Integer> getAllTypeIDs() {
-
-        String result = "";
-        if (con == null) {
-            result = "connection failure";
-        }
-
-        List<Integer> typeIdList = new ArrayList<>();
-        PreparedStatement ps = null;
-        ResultSet rs = null;
-        String sqlStr = "SELECT typeID FROM items";
-
-        try {
-            ps = con.prepareStatement(sqlStr);
-            rs = ps.executeQuery();
-            while (rs.next()) {
-                typeIdList.add(Integer.parseInt(rs.getString("typeID")));
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return typeIdList;
+    public void clearTable() {
+        outputTable = "";
     }
 
-    public void getOrders() {
-        List<MarketOrders> marketOrders = new ArrayList<>();
-        List<Integer> typeIDList = getAllTypeIDs();
+    public void getOrders() throws SQLException {
+        List<MarketOrder> marketOrders = new ArrayList<>();
         clearTable();
 
         Connection con = DatabaseConnection.connection();
-        String result = "";
 
         if (con == null) {
             result = "connection failure";
@@ -95,153 +69,62 @@ public class BBean implements Serializable {
         PreparedStatement selectMarketOrder = null;
         try {
             selectMarketOrder = con.prepareStatement(
-                    "SELECT marketorders.typeID, "
-                    + "items.typeName, "
-                    + "ROUND(SUM(marketorders.isk * marketorders.qty), 2) AS TotalISK, "
-                    + "SUM(marketorder.qty) AS TotalQTY "
+                    "SELECT marketorders.type_id, "
+                    + "items.type_name, "
+                    + "ROUND(SUM(marketorders.price * marketorders.volume_remain), 2) AS TotalISK, "
+                    + "SUM(marketorders.volume_remain) AS TotalQTY "
                     + "FROM items "
-                    + "JOIN marketorders ON marketorders.typeID = items.typeID "
-                    + "WHERE marketorders.locationID = 60003760 AND "
-                    + "marketorder.isBuyOrder = FALSE "
-                    + "GROUP BY marketorders.typeID, items.typeName");
+                    + "JOIN marketorders ON marketorders.type_id = items.type_id "
+                    + "WHERE marketorders.is_buy_order = 0 "
+                    + "GROUP BY marketorders.type_id, items.type_name");
 
             ResultSet rs = selectMarketOrder.executeQuery();
 
             while (rs.next()) {
-                marketOrders.add(new MarketOrders(
-                        rs.getInt("typeID"),
-                        rs.getString("typeName"),
-                        //rs.getTimestamp("timeFetched"),
-                        rs.getDouble("TotalQTY"),
-                        rs.getDouble("TotalISK")));
+                if (rs.getDouble("TotalISK") <= buyoutPrice && rs.getDouble("TotalQTY") <= buyoutQTY) {
+                    marketOrders.add(new MarketOrder(
+                            rs.getInt("type_id"),
+                            rs.getString("type_name"),
+                            rs.getDouble("TotalISK"),
+                            rs.getDouble("TotalQTY")));
+                }
             }
 
             buildOutputTable(marketOrders);
 
-        } catch (Exception ex) {
-            System.err.println(ex);
-            ex.printStackTrace();
-
         } finally {
-            try {
-                DatabaseConnection.closeDatabaseConnection(con);
-                if (selectMarketOrder != null) {
-                    selectMarketOrder.close();
-                }
-
-            } catch (SQLException sqle) {
-                System.err.println(sqle);
-                sqle.printStackTrace();
+            DatabaseConnection.closeDatabaseConnection(con);
+            if (selectMarketOrder != null) {
+                selectMarketOrder.close();
             }
         }
     }
 
-    public void buildOutputTable(List<MarketOrders> marketOrders) {
+    public void buildOutputTable(List<MarketOrder> marketOrders) {
         outputTable = "";
-        SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
-        String currentTimestamp = new Timestamp(System.currentTimeMillis()).toString();
 
         for (int i = 1; i < marketOrders.size(); i++) {
-            if (marketOrders.get(i).totalISK <= buyoutPrice
-                && marketOrders.get(i).totalQTY <= buyoutQTY) {
-                try {
-                    NumberFormat nf = NumberFormat.getNumberInstance();
-                    //Date d1 = format.parse(currentTimestamp);
-                    //Date d2 = format.parse(marketOrders.get(i).timeFetched.toString());
-                    //long diff = d2.getTime() - d1.getTime();
-                    //long diffMinutes = diff / (60 * 1000) % 60;
+            try {
+                NumberFormat nf = NumberFormat.getNumberInstance();
 
-                    outputTable
-                            += "<tr>"
-                            + "<td>"
-                            + "<img src=\"https://image.eveonline.com/Type/" + marketOrders.get(i).typeID + "_32.png\" width=\"32\" height=\"32\"/>"
-                            + "</td>"
-                            + "<td>"
-                            + marketOrders.get(i).typeName
-                            + "</td>"
-                            + "<td>"
-                            + nf.format(marketOrders.get(i).totalISK)
-                            + "</td>"
-                            + "<td>"
-                            + nf.format(marketOrders.get(i).totalQTY)
-                            + "</td>"
-                            + "<td>"
-                            + marketOrders.get(i).locationID
-                            + "</td>"
-                            //+ "<td>"
-                            //+ diffMinutes + "minutes ago"
-                            //+ "</td>"
-                            + "</tr>";
-                } catch (Exception e) {
-                    System.out.println(e.getMessage());
-                }
+                outputTable
+                        += "<tr>"
+                        + "<td>"
+                        + "<img src=\"https://image.eveonline.com/Type/" + marketOrders.get(i).getType_id() + "_32.png\" width=\"32\" height=\"32\"/>"
+                        + "</td>"
+                        + "<td>"
+                        + marketOrders.get(i).getType_name()
+                        + "</td>"
+                        + "<td>"
+                        + nf.format(marketOrders.get(i).getBuyout_price())
+                        + "</td>"
+                        + "<td>"
+                        + nf.format(marketOrders.get(i).getBuyout_volume_total())
+                        + "</td>"
+                        + "</tr>";
+            } catch (Exception e) {
+                System.out.println(e.getMessage());
             }
-        }
-    }
-
-    public class MarketOrders {
-
-        int typeID;
-        String typeName;
-        Timestamp timeFetched;
-        int locationID = 60003760;
-        double totalQTY;
-        double totalISK;
-
-        public MarketOrders(int typeID, String typeName, /*Timestamp timeFetched,*/ double totalQTY, double totalISK) {
-            this.typeID = typeID;
-            this.typeName = typeName;
-            /*this.timeFetched = timeFetched;*/
-            this.totalQTY = totalQTY;
-            this.totalISK = totalISK;
-        }
-
-        public int getTypeID() {
-            return typeID;
-        }
-
-        public void setTypeID(int typeID) {
-            this.typeID = typeID;
-        }
-
-        public double getTotalISK() {
-            return totalISK;
-        }
-
-        public void setTotalISK(double totalISK) {
-            this.totalISK = totalISK;
-        }
-
-        public double getTotalQTY() {
-            return totalQTY;
-        }
-
-        public void setTotalQTY(double totalQTY) {
-            this.totalQTY = totalQTY;
-        }
-
-        public int getLocationID() {
-            return locationID;
-        }
-
-        public void setLocationID(int locationID) {
-            this.locationID = locationID;
-        }
-
-        public Timestamp getTimeFetched() {
-            return timeFetched;
-        }
-
-        public void setTimeFetched(Timestamp timeFetched) {
-            this.timeFetched = timeFetched;
-        }
-
-        public String getTypeName() {
-            return typeName;
-        }
-
-        public void setTypeName(String typeName) {
-            this.typeName = typeName;
         }
     }
 }

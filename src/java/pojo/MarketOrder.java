@@ -3,19 +3,55 @@ package pojo;
 import java.sql.Timestamp;
 
 public class MarketOrder {
-    int duration = 0;
-    boolean is_buy_order = false;
-    String issued = "default";
-    int location_id = 0;
-    int min_volume = 0;
-    int order_id = 0;
-    double price = 0.0;
-    String range = "default";
-    int system_id = 0;
-    int type_id = 0;
-    int volume_remain = 0;
-    int volume_total = 0;
-    Timestamp timeStamp;
+
+    int duration;
+    boolean is_buy_order;
+    String issued;
+    long location_id;
+    int min_volume;
+    int order_id;
+    double price;
+    String range;
+    int system_id;
+    int type_id;
+    int volume_remain;
+    int volume_total;
+    Timestamp timestamp;
+    String type_name;
+    double buyout_price;
+    double buyout_volume_total;
+
+    public Timestamp getTimestamp() {
+        return timestamp;
+    }
+
+    public void setTimestamp(Timestamp timestamp) {
+        this.timestamp = timestamp;
+    }
+
+    public double getBuyout_price() {
+        return buyout_price;
+    }
+
+    public void setBuyout_price(double buyout_price) {
+        this.buyout_price = buyout_price;
+    }
+
+    public double getBuyout_volume_total() {
+        return buyout_volume_total;
+    }
+
+    public void setBuyout_volume_total(double buyout_volume_total) {
+        this.buyout_volume_total = buyout_volume_total;
+    }
+
+    public String getType_name() {
+        return type_name;
+    }
+
+    public void setType_name(String type_name) {
+        this.type_name = type_name;
+    }
 
     public int getDuration() {
         return duration;
@@ -41,11 +77,11 @@ public class MarketOrder {
         this.issued = issued;
     }
 
-    public int getLocation_id() {
+    public long getLocation_id() {
         return location_id;
     }
 
-    public void setLocation_id(int location_id) {
+    public void setLocation_id(long location_id) {
         this.location_id = location_id;
     }
 
@@ -112,16 +148,8 @@ public class MarketOrder {
     public void setVolume_total(int volume_total) {
         this.volume_total = volume_total;
     }
-    
-    public Timestamp getTimeStamp() {
-        return timeStamp;
-    }
 
-    public void setTimeStamp(Timestamp timeStamp) {
-        this.timeStamp = timeStamp;
-    }
-
-    public MarketOrder(int duration, boolean is_buy_order, String issued, int location_id, int min_volume, int order_id, double price, String range, int system_id, int type_id, int volume_remain, int volume_total) {
+    public MarketOrder(int duration, boolean is_buy_order, String issued, long location_id, int min_volume, int order_id, double price, String range, int system_id, int type_id, int volume_remain, int volume_total, Timestamp timestamp) {
         this.duration = duration;
         this.is_buy_order = is_buy_order;
         this.issued = issued;
@@ -134,7 +162,23 @@ public class MarketOrder {
         this.type_id = type_id;
         this.volume_remain = volume_remain;
         this.volume_total = volume_total;
+        this.timestamp = timestamp;
     }
+
+    public MarketOrder(String type_name, double price, int volume_remain, Timestamp timestamp) {
+        this.price = price;
+        this.volume_remain = volume_remain;
+        this.timestamp = timestamp;
+        this.type_name = type_name;
+    }
+
+    public MarketOrder(int type_id, String type_name, double buyout_price, double buyout_volume_total) {
+        this.type_id = type_id;
+        this.type_name = type_name;
+        this.buyout_price = buyout_price;
+        this.buyout_volume_total = buyout_volume_total;
+    }
+    
 
     public MarketOrder() {
     }

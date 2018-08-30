@@ -18,12 +18,13 @@
             <div style="width: 75%;">
                 <h:form>
                     <h:outputText>Search:</h:outputText> 
-                    <h:inputText id="typeID" value="#{pBean.inputTypeID}"/>
+                    <h:inputText id="typeID" value="#{pBean.inputTypeID}" />
                     <h:commandButton value="Search" action="#{pBean.getOrdersByTypeID}"/>
                     <br/> 
                     <table id="itemTable" class="display" style="width: 100%;">
                         <thead>
                             <tr>
+                                <th>Icon</th>
                                 <th>Item</th>
                                 <th>ISK</th>
                                 <th>QTY</th>

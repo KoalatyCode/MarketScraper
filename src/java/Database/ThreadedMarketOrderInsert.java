@@ -8,6 +8,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import pojo.MarketOrder;
 
 public class ThreadedMarketOrderInsert {
@@ -56,12 +58,16 @@ public class ThreadedMarketOrderInsert {
 
         @Override
         public void run() {
-            insertMarketOrder(marketOrder);
+            try {
+                insertMarketOrder(marketOrder);
+            } catch (SQLException ex) {
+                System.out.println(ex.getMessage());
+            }
         }
 
     }
 
-    public static void insertMarketOrder(MarketOrder marketOrder) {
+    public static void insertMarketOrder(MarketOrder marketOrder) throws SQLException{
         if (con == null) {
             result = "connection failure";
             return;
@@ -70,13 +76,13 @@ public class ThreadedMarketOrderInsert {
         PreparedStatement ps = null;
         try {
             ps = con.prepareStatement(
-                    "INSERT INTO marketorders "
-                    + "(duration, is_buy_order, issued, location_id, min_volume, order_id, price, `range`, system_id, type_id, volume_remain, volume_total, time_fetched) "
-                    + "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                "INSERT INTO marketorders "
+                + "(duration, is_buy_order, issued, location_id, min_volume, order_id, price, `range`, system_id, type_id, volume_remain, volume_total, time_fetched) "
+                + "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
             ps.setInt(1, marketOrder.getDuration());
             ps.setBoolean(2, marketOrder.isIs_buy_order());
             ps.setString(3, marketOrder.getIssued());
-            ps.setInt(4, marketOrder.getLocation_id());
+            ps.setLong(4, marketOrder.getLocation_id());
             ps.setInt(5, marketOrder.getMin_volume());
             ps.setInt(6, marketOrder.getOrder_id());
             ps.setDouble(7, marketOrder.getPrice());
@@ -85,13 +91,16 @@ public class ThreadedMarketOrderInsert {
             ps.setInt(10, marketOrder.getType_id());
             ps.setInt(11, marketOrder.getVolume_remain());
             ps.setInt(12, marketOrder.getVolume_total());
-            ps.setTimestamp(13, marketOrder.getTimeStamp());
+            ps.setTimestamp(13, marketOrder.getTimestamp());
 
             ps.executeUpdate();
-            
 
-        } catch (SQLException ex) {
-            System.err.println(ex);
+        } finally
+        {
+            if(ps != null)
+            {
+                ps.close();
+            }
         }
     }
 }

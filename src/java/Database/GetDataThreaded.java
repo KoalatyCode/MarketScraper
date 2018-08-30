@@ -23,28 +23,28 @@ public class GetDataThreaded {
     }
 
     public void runGetData() {
-        int pages = 250;
+        int pages = 0;
         Map<String, List<String>> responseHeaders = getResponseHeaders();
-        
+
         for (Map.Entry<String, List<String>> entry : responseHeaders.entrySet()) {
             if (entry.getKey() != null) {
                 if (entry.getKey().equals("X-Pages")) {
                     String str = entry.getValue().toString();
-                    str = str.replaceAll("\\[", "").replaceAll("\\]","");
+                    str = str.replaceAll("\\[", "").replaceAll("\\]", "");
                     pages = Integer.parseInt(str);
                 }
             }
         }
-        
+
         ExecutorService executor = Executors.newFixedThreadPool(100);
         for (int i = 1; i <= pages; i++) {
             executor.execute(new GetDataFromPage(i));
         }
-        
+
         executor.shutdown();
         while (!executor.isTerminated()) {
         }
-        
+
         System.out.println(marketOrderList.size());
     }
 
@@ -79,13 +79,18 @@ public class GetDataThreaded {
 
         @Override
         public void run() {
-            GetData getData = new GetData(page);
-            getData.fetchData();
+            try {
+                GetData getData = new GetData(page);
+                getData.fetchData();
+            } catch (IOException ex) {
+                System.out.println(ex.getMessage());
+            }
         }
 
     }
 
     private class GetData {
+
         int page;
 
         public int getPage() {
@@ -95,15 +100,16 @@ public class GetDataThreaded {
         public void setPage(int page) {
             this.page = page;
         }
-        
+
         public GetData(int page) {
             this.page = page;
         }
 
-        public void fetchData() {
+        public void fetchData() throws IOException {
+            InputStream is = null;
             try {
                 String url = "https://esi.tech.ccp.is/latest/markets/10000002/orders/?datasource=tranquility&page=";
-                InputStream is = new URL(url + page).openStream();
+                is = new URL(url + page).openStream();
                 JsonReader jreader = Json.createReader(is);
                 JsonArray jsonArray = jreader.readArray();
 
@@ -114,7 +120,7 @@ public class GetDataThreaded {
                     marketOrder.setDuration(jObject.getInt("duration"));
                     marketOrder.setIs_buy_order(jObject.getBoolean("is_buy_order"));
                     marketOrder.setIssued(jObject.getString("issued"));
-                    marketOrder.setLocation_id(jObject.getInt("location_id"));
+                    marketOrder.setLocation_id(jObject.getJsonNumber("location_id").longValue());
                     marketOrder.setMin_volume(jObject.getInt("min_volume"));
                     marketOrder.setOrder_id(jObject.getInt("order_id"));
                     marketOrder.setPrice(jObject.getJsonNumber("price").doubleValue());
@@ -123,17 +129,15 @@ public class GetDataThreaded {
                     marketOrder.setType_id(jObject.getInt("type_id"));
                     marketOrder.setVolume_remain(jObject.getInt("volume_remain"));
                     marketOrder.setVolume_total(jObject.getInt("volume_total"));
-                    marketOrder.setTimeStamp(new Timestamp(System.currentTimeMillis()));
+                    marketOrder.setTimestamp(new Timestamp(System.currentTimeMillis()));
 
                     marketOrderList.add(marketOrder);
-
-                    System.out.println("Market Order Type ID: " + marketOrder.getType_id() + "\n Page Number: " + page);
-
                 }
 
-            } catch (Exception e) {
-                System.out.println(e.getMessage());
-                e.printStackTrace();
+            } finally {
+                if (is != null) {
+                    is.close();
+                }
             }
         }
     }

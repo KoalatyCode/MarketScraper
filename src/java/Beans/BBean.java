@@ -81,7 +81,10 @@ public class BBean implements Serializable {
             ResultSet rs = selectMarketOrder.executeQuery();
 
             while (rs.next()) {
-                if (rs.getDouble("TotalISK") <= buyoutPrice && rs.getDouble("TotalQTY") <= buyoutQTY) {
+                if (rs.getDouble("TotalISK") <= buyoutPrice 
+                    && rs.getDouble("TotalQTY") <= buyoutQTY
+                    && rs.getDouble("TotalQTY") >= 10
+                    && !(rs.getString("type_name").contains("Blueprint"))) {
                     marketOrders.add(new MarketOrder(
                             rs.getInt("type_id"),
                             rs.getString("type_name"),

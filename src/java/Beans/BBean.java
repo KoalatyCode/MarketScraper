@@ -1,6 +1,7 @@
 package Beans;
 
 import Database.DatabaseConnection;
+import Database.UpdateDatabase;
 import javax.inject.Named;
 import javax.enterprise.context.SessionScoped;
 import java.io.Serializable;
@@ -129,5 +130,11 @@ public class BBean implements Serializable {
                 System.out.println(e.getMessage());
             }
         }
+    }
+    
+    public void updateDatabase()
+    {
+        UpdateDatabase updateDB = new UpdateDatabase();
+        updateDB.run();
     }
 }

@@ -78,7 +78,7 @@ public class UpdateDatabase {
         }
     }
 
-    public static void main(String[] args) {
+    public void run() {
         try {
             truncateTheDatabase();
             GetDataThreaded getData = new GetDataThreaded();

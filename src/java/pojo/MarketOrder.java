@@ -165,7 +165,8 @@ public class MarketOrder {
         this.timestamp = timestamp;
     }
 
-    public MarketOrder(String type_name, double price, int volume_remain, Timestamp timestamp) {
+    public MarketOrder(int type_id, String type_name, double price, int volume_remain, Timestamp timestamp) {
+        this.type_id = type_id;
         this.price = price;
         this.volume_remain = volume_remain;
         this.timestamp = timestamp;

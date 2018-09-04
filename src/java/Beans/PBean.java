@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import pojo.MarketOrder;
+import javax.faces.component.FacesComponent;
 
 @Named(value = "pBean")
 @SessionScoped
@@ -27,8 +28,17 @@ public class PBean implements Serializable {
     private int inputTypeID;
     private String inputTypeName;
     private String outputTable;
+    private String outputOptionBox;
     public static String result = "";
 
+    public String getOutputOptionBox() {
+        return outputOptionBox;
+    }
+
+    public void setOutputOptionBox(String outputOptionBox) {
+        this.outputOptionBox = outputOptionBox;
+    }
+    
     public String getOutputTable() {
         return outputTable;
     }
@@ -58,24 +68,40 @@ public class PBean implements Serializable {
     }
 
     public void getWildCards() throws SQLException {
+        if(inputTypeName == null)
+            return;
+        if(inputTypeName.length() < 3)
+            return;
+        
         Connection con = DatabaseConnection.connection();
 
         if (con == null) {
             result = "connection failure";
             return;
         }
-        
+        List<String> options = new ArrayList<>();
         PreparedStatement ps = null;
 
         try {
+            ps = con.prepareStatement(
+                    "SELECT items.type_id, items.type_name "
+                    + "FROM items "
+                    + "WHERE items.type_name LIKE ?");
+            ps.setString(1, "%" + inputTypeName + "%");
 
+            ResultSet rs = ps.executeQuery();
+
+            while (rs.next()) {
+                options.add(rs.getString("type_name"));
+            }
+            
         } finally {
             DatabaseConnection.closeDatabaseConnection(con);
             if (ps != null) {
                 ps.close();
             }
         }
-
+        buildOptionBox(options);
     }
 
     public void getOrdersByTypeName(String typeName) throws SQLException {
@@ -91,17 +117,17 @@ public class PBean implements Serializable {
 
         try {
             ps = con.prepareStatement(
-                    "SELECT items.type_id, items.type_name, marketorders.price, marketOrders.time_fetched"
+                    "SELECT items.type_id, items.type_name, marketorders.price, marketorders.volume_remain, marketOrders.time_fetched"
                     + "FROM items "
                     + "JOIN marketorders ON marketorders.type_id = items.type_id "
-                    + "WHERE items.type_name LIKE ? AND "
-                    + "marketorders.is_buy_order = 1");
+                    + "WHERE items.type_name = ? ");
             ps.setString(1, typeName);
 
             ResultSet rs = ps.executeQuery();
 
             while (rs.next()) {
                 marketOrders.add(new MarketOrder(
+                        rs.getInt("type_id"),
                         rs.getString("type_name"),
                         rs.getDouble("price"),
                         rs.getInt("volume_remain"),
@@ -141,11 +167,11 @@ public class PBean implements Serializable {
             ResultSet rs = ps.executeQuery();
 
             while (rs.next()) {
-                marketOrders.add(new MarketOrder(
+                /*marketOrders.add(new MarketOrder(
                         rs.getString("type_name"),
                         rs.getDouble("price"),
                         rs.getInt("volume_remain"),
-                        rs.getTimestamp("time_fetched")));
+                        rs.getTimestamp("time_fetched")));*/
             }
 
             buildOutputTable(marketOrders);
@@ -174,7 +200,7 @@ public class PBean implements Serializable {
                 outputTable
                         += "<tr>"
                         + "<td>"
-                        + "<img src=\"https://image.eveonline.com/Type/" + this.inputTypeID + "_32.png\" width=\"32\" height=\"32\"/>"
+                        + "<img src=\"https://image.eveonline.com/Type/" + marketOrders.get(i).getType_id() + "_32.png\" width=\"32\" height=\"32\"/>"
                         + "</td>"
                         + "<td>"
                         + marketOrders.get(i).getType_name()
@@ -193,5 +219,14 @@ public class PBean implements Serializable {
                 System.out.println(e.getMessage());
             }
         }
+    }
+    
+    public void buildOptionBox(List<String> options)
+    {
+        outputOptionBox = "<select>";
+        options.forEach((option) -> {
+            outputOptionBox += "<option value=\"" + option + "\" >" + option + "</option>";
+        });
+        outputOptionBox += "</select>";
     }
 }

@@ -1,7 +1,8 @@
 <?xml version='1.0' encoding='UTF-8' ?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml"
-      xmlns:h="http://xmlns.jcp.org/jsf/html">
+      xmlns:h="http://xmlns.jcp.org/jsf/html"
+      xmlns:f="http://xmlns.jcp.org/jsf/core">
     <h:head>
         <title>Just Eve Data</title>
         <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/dt/jq-3.3.1/dt-1.10.18/b-1.5.2/b-colvis-1.5.2/b-html5-1.5.2/r-2.2.2/sc-1.5.0/datatables.min.css"/>
@@ -23,8 +24,14 @@
             <div style="width: 75%;">
                 <h:form>
                     <h:outputText>Search:</h:outputText> 
-                    <h:inputText id="typeID" value="#{pBean.inputTypeID}" />
+                    <h:inputText id="type_name" value="#{pBean.inputTypeName}" >
+                        <f:ajax event="valueChange" execute="#{pBean.getWildCards()}"/>
+                    </h:inputText>
+                    <h:outputText value="#{pBean.outputOptionBox}" escape="false"/>
+
                     <h:commandButton value="Search" action="#{pBean.getOrdersByTypeID}"/>
+                </h:form>
+                <h:form>
                     <br/> 
                     <table id="itemTable" class="display" style="width: 100%;">
                         <thead>
